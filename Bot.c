@@ -130,12 +130,94 @@ void AddMovement(struct Bot* bot, enum MovementType type, enum Direction directi
     bot->MoveQueue[currentLength + 1].type = INVALID;
 }
 
+
 void MoveBot_AI(struct GameData* data)
 {
-    if (!data->bot || !data->grid) return;
-    
-    while (data->bot->MoveQueue[data->step].type == MOVE_TO || data->bot->MoveQueue[data->step].type == JUMP)
+    // 1. Vérification de sécurité (Ajout des || manquants)
+    if (!data || !data->bot || !data->grid) return;
+
+    // Boucle : tant que le bot est en vie et n'a pas atteint la fin
+    while (data->pathResult == NOTHING)
     {
+        // 2. Récupérer la position comme Karma l'a dit
+        int x = data->bot->position.x;
+        int y = data->bot->position.y;
+        bool moveFound = false;
+
+        // --- TEST NORD (y - 1) ---
+        if (y > 0 && !moveFound) {
+            enum CellType type = data->grid->cell[y - 1][x]->type;
+            if (type == WALKABLE || type == END) {
+                AddMovement(data->bot, MOVE_TO, NORTH);
+                moveFound = true;
+            }
+            else if (type == OBSTACLE && y > 1) {
+                if (data->grid->cell[y - 2][x]->type == WALKABLE || data->grid->cell[y - 2][x]->type == END)
+                {
+                    AddMovement(data->bot, JUMP, NORTH);
+                    moveFound = true;
+
+                }
+                
+            }
+        }
+
+        // --- TEST SUD (y + 1) ---
+        if (y + 1 < GRID_ROWS && !moveFound) {
+            enum CellType type = data->grid->cell[y + 1][x]->type;
+            if (type == WALKABLE || type == END) {
+                AddMovement(data->bot, MOVE_TO, SOUTH);
+                moveFound = true;
+            }
+            else if (type == OBSTACLE && y + 2 < GRID_ROWS) {
+                if (data->grid->cell[y + 2][x]->type == WALKABLE || data->grid->cell[y + 2][x]->type == END)
+                {
+                    AddMovement(data->bot, JUMP, SOUTH);
+                    moveFound = true;
+
+                }
+                
+            }
+        }
+
+        // --- TEST EST (x + 1) ---
+        if (x + 1 < GRID_COLS && !moveFound) {
+            enum CellType type = data->grid->cell[y][x + 1]->type;
+            if (type == WALKABLE || type == END) {
+                AddMovement(data->bot, MOVE_TO, EAST);
+                moveFound = true;
+            }
+            else if (type == OBSTACLE && x + 2 < GRID_COLS) {
+                if (data->grid->cell[y][x + 2]->type == WALKABLE || data->grid->cell[y][x + 2]->type == END)
+                {
+                    AddMovement(data->bot, JUMP, EAST);
+                    moveFound = true;
+
+                }
+                
+            }
+        }
+
+        // --- TEST OUEST (x - 1) ---
+        if (x > 0 && !moveFound) {
+            enum CellType type = data->grid->cell[y][x - 1]->type;
+            if (type == WALKABLE || type == END) {
+                AddMovement(data->bot, MOVE_TO, WEST);
+                moveFound = true;
+            }
+            else if (type == OBSTACLE && x > 1){
+                if (data->grid->cell[y][x - 2]->type == WALKABLE || data->grid->cell[y][x - 2]->type == END)
+                {
+                    AddMovement(data->bot, JUMP, WEST);
+                    moveFound = true;
+
+                }
+                
+            }
+        }
+
+     
+
         sfSleep(sfMilliseconds(500));
         enum MovementType type = data->bot->MoveQueue[data->step].type;
         enum Direction direction = data->bot->MoveQueue[data->step].direction;
@@ -143,6 +225,7 @@ void MoveBot_AI(struct GameData* data)
         data->pathResult = MoveBot(data->bot, data->grid, type, direction);
     }
 }
+
 
 bool SearchPath_AI(struct Bot* bot, Grid* grid)
 {

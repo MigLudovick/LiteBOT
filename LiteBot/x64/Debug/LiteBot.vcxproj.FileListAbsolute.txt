@@ -1,0 +1,2 @@
+C:\Users\Loren\Desktop\Visual Studio\Litebot\LiteBot\x64\Debug\LiteBot.exe
+C:\Users\Loren\Desktop\LiteBot\LiteBot\x64\Debug\LiteBot.exe
