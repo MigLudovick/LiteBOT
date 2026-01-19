@@ -135,96 +135,85 @@ void MoveBot_AI(struct GameData* data)
 {
     if (!data || !data->bot || !data->grid) return;
 
-    // 1. Création d'un tableau de mémoire local pour cette exécution
-    // Initialisé à false (0) partout
-    bool visited[GRID_ROWS][GRID_COLS];
-    for (int i = 0; i < GRID_ROWS; i++) {
-        for (int j = 0; j < GRID_COLS; j++) {
-            visited[i][j] = false;
-        }
-    }
+    bool visited[GRID_ROWS][GRID_COLS] = { false };
+    sfVector2i history[GRID_ROWS * GRID_COLS];
+    int historyIndex = 0;
 
-    // On marque la position actuelle (départ) comme visitée
     visited[data->bot->position.y][data->bot->position.x] = true;
+    history[historyIndex] = data->bot->position;
 
     while (data->pathResult == NOTHING)
     {
         int x = data->bot->position.x;
         int y = data->bot->position.y;
         bool moveFound = false;
+        enum Direction chosenDir;
+        enum MovementType chosenType = MOVE_TO;
 
-        // --- TEST NORD (y - 1) ---
-        if (y > 0 && !moveFound) {
-            if ((data->grid->cell[y - 1][x]->type == WALKABLE || data->grid->cell[y - 1][x]->type == END) && !visited[y - 1][x]) {
-                visited[y - 1][x] = true;
-                AddMovement(data->bot, MOVE_TO, NORTH);
-                moveFound = true;
+        // --- PRIORITÉ : TESTER LES MARCHES (Distance 1) ---
+        // Nord
+        if (y > 0 && !moveFound && !visited[y - 1][x] && (data->grid->cell[y - 1][x]->type == WALKABLE || data->grid->cell[y - 1][x]->type == END)) {
+            chosenDir = NORTH; chosenType = MOVE_TO; moveFound = true;
+        }
+        // Est
+        else if (x + 1 < GRID_COLS && !moveFound && !visited[y][x + 1] && (data->grid->cell[y][x + 1]->type == WALKABLE || data->grid->cell[y][x + 1]->type == END)) {
+            chosenDir = EAST; chosenType = MOVE_TO; moveFound = true;
+        }
+        // Sud
+        else if (y + 1 < GRID_ROWS && !moveFound && !visited[y + 1][x] && (data->grid->cell[y + 1][x]->type == WALKABLE || data->grid->cell[y + 1][x]->type == END)) {
+            chosenDir = SOUTH; chosenType = MOVE_TO; moveFound = true;
+        }
+        // Ouest
+        else if (x > 0 && !moveFound && !visited[y][x - 1] && (data->grid->cell[y][x - 1]->type == WALKABLE || data->grid->cell[y][x - 1]->type == END)) {
+            chosenDir = WEST; chosenType = MOVE_TO; moveFound = true;
+        }
+
+        // --- SECONDAIRE : TESTER LES SAUTS (Distance 2) si pas de marche possible ---
+        if (!moveFound) {
+            if (y > 1 && !visited[y - 2][x] && data->grid->cell[y - 1][x]->type == OBSTACLE && (data->grid->cell[y - 2][x]->type == WALKABLE || data->grid->cell[y - 2][x]->type == END)) {
+                chosenDir = NORTH; chosenType = JUMP; moveFound = true;
             }
-            else if (data->grid->cell[y - 1][x]->type == OBSTACLE && y > 1) {
-                if ((data->grid->cell[y - 2][x]->type == WALKABLE || data->grid->cell[y - 2][x]->type == END) && !visited[y - 2][x]) {
-                    visited[y - 2][x] = true;
-                    AddMovement(data->bot, JUMP, NORTH);
-                    moveFound = true;
-                }
+            else if (x + 2 < GRID_COLS && !visited[y][x + 2] && data->grid->cell[y][x + 1]->type == OBSTACLE && (data->grid->cell[y][x + 2]->type == WALKABLE || data->grid->cell[y][x + 2]->type == END)) {
+                chosenDir = EAST; chosenType = JUMP; moveFound = true;
+            }
+            else if (y + 2 < GRID_ROWS && !visited[y + 2][x] && data->grid->cell[y + 1][x]->type == OBSTACLE && (data->grid->cell[y + 2][x]->type == WALKABLE || data->grid->cell[y + 2][x]->type == END)) {
+                chosenDir = SOUTH; chosenType = JUMP; moveFound = true;
+            }
+            else if (x > 1 && !visited[y][x - 2] && data->grid->cell[y][x - 1]->type == OBSTACLE && (data->grid->cell[y][x - 2]->type == WALKABLE || data->grid->cell[y][x - 2]->type == END)) {
+                chosenDir = WEST; chosenType = JUMP; moveFound = true;
             }
         }
 
-        // --- TEST EST (x + 1) ---
-        if (x + 1 < GRID_COLS && !moveFound) {
-            if ((data->grid->cell[y][x + 1]->type == WALKABLE || data->grid->cell[y][x + 1]->type == END) && !visited[y][x + 1]) {
-                visited[y][x + 1] = true;
-                AddMovement(data->bot, MOVE_TO, EAST);
-                moveFound = true;
-            }
-            else if (data->grid->cell[y][x + 1]->type == OBSTACLE && x + 2 < GRID_COLS) {
-                if ((data->grid->cell[y][x + 2]->type == WALKABLE || data->grid->cell[y][x + 2]->type == END) && !visited[y][x + 2]) {
-                    visited[y][x + 2] = true;
-                    AddMovement(data->bot, JUMP, EAST);
-                    moveFound = true;
-                }
-            }
-        }
+        if (moveFound) {
+            // Appliquer le mouvement
+            AddMovement(data->bot, chosenType, chosenDir);
+            data->pathResult = MoveBot(data->bot, data->grid, chosenType, chosenDir);
 
-        // --- TEST SUD (y + 1) ---
-        if (y + 1 < GRID_ROWS && !moveFound) {
-            if ((data->grid->cell[y + 1][x]->type == WALKABLE || data->grid->cell[y + 1][x]->type == END) && !visited[y + 1][x]) {
-                visited[y + 1][x] = true;
-                AddMovement(data->bot, MOVE_TO, SOUTH);
-                moveFound = true;
-            }
-            else if (data->grid->cell[y + 1][x]->type == OBSTACLE && y + 2 < GRID_ROWS) {
-                if ((data->grid->cell[y + 2][x]->type == WALKABLE || data->grid->cell[y + 2][x]->type == END) && !visited[y + 2][x]) {
-                    visited[y + 2][x] = true;
-                    AddMovement(data->bot, JUMP, SOUTH);
-                    moveFound = true;
-                }
-            }
-        }
+            // Marquer la destination comme visitée
+            visited[data->bot->position.y][data->bot->position.x] = true;
+            historyIndex++;
+            history[historyIndex] = data->bot->position;
 
-        // --- TEST OUEST (x - 1) ---
-        if (x > 0 && !moveFound) {
-            if ((data->grid->cell[y][x - 1]->type == WALKABLE || data->grid->cell[y][x - 1]->type == END) && !visited[y][x - 1]) {
-                visited[y][x - 1] = true;
-                AddMovement(data->bot, MOVE_TO, WEST);
-                moveFound = true;
-            }
-            else if (data->grid->cell[y][x - 1]->type == OBSTACLE && x > 1) {
-                if ((data->grid->cell[y][x - 2]->type == WALKABLE || data->grid->cell[y][x - 2]->type == END) && !visited[y][x - 2]) {
-                    visited[y][x - 2] = true;
-                    AddMovement(data->bot, JUMP, WEST);
-                    moveFound = true;
-                }
-            }
+            sfSleep(sfMilliseconds(300));
         }
+        else if (historyIndex > 0) {
+            // RETOUR EN ARRIÈRE (Backtracking)
+            historyIndex--;
+            sfVector2i target = history[historyIndex];
 
-        // Exécution du mouvement
-        if (moveFound)
-        {
-            sfSleep(sfMilliseconds(500));
-            enum MovementType mType = data->bot->MoveQueue[data->step].type;
-            enum Direction mDir = data->bot->MoveQueue[data->step].direction;
-            data->step++;
-            data->pathResult = MoveBot(data->bot, data->grid, mType, mDir);
+            // Calcul de la distance pour savoir s'il faut sauter pour revenir
+            int distY = abs(target.y - data->bot->position.y);
+            int distX = abs(target.x - data->bot->position.x);
+            enum MovementType backType = (distY == 2 || distX == 2) ? JUMP : MOVE_TO;
+
+            enum Direction backDir;
+            if (target.y < data->bot->position.y) backDir = NORTH;
+            else if (target.y > data->bot->position.y) backDir = SOUTH;
+            else if (target.x < data->bot->position.x) backDir = WEST;
+            else backDir = EAST;
+
+            AddMovement(data->bot, backType, backDir);
+            data->pathResult = MoveBot(data->bot, data->grid, backType, backDir);
         }
     }
 }
