@@ -162,24 +162,6 @@ void MoveBot_AI(struct GameData* data)
             }
         }
 
-        // --- TEST SUD (y + 1) ---
-        if (y + 1 < GRID_ROWS && !moveFound) {
-            enum CellType type = data->grid->cell[y + 1][x]->type;
-            if (type == WALKABLE || type == END) {
-                AddMovement(data->bot, MOVE_TO, SOUTH);
-                moveFound = true;
-            }
-            else if (type == OBSTACLE && y + 2 < GRID_ROWS) {
-                if (data->grid->cell[y + 2][x]->type == WALKABLE || data->grid->cell[y + 2][x]->type == END)
-                {
-                    AddMovement(data->bot, JUMP, SOUTH);
-                    moveFound = true;
-
-                }
-                
-            }
-        }
-
         // --- TEST EST (x + 1) ---
         if (x + 1 < GRID_COLS && !moveFound) {
             enum CellType type = data->grid->cell[y][x + 1]->type;
@@ -195,6 +177,23 @@ void MoveBot_AI(struct GameData* data)
 
                 }
                 
+            }
+        }
+        // --- TEST SUD (y + 1) ---
+        if (y + 1 < GRID_ROWS && !moveFound) {
+            enum CellType type = data->grid->cell[y + 1][x]->type;
+            if (type == WALKABLE || type == END) {
+                AddMovement(data->bot, MOVE_TO, SOUTH);
+                moveFound = true;
+            }
+            else if (type == OBSTACLE && y + 2 < GRID_ROWS) {
+                if (data->grid->cell[y + 2][x]->type == WALKABLE || data->grid->cell[y + 2][x]->type == END)
+                {
+                    AddMovement(data->bot, JUMP, SOUTH);
+                    moveFound = true;
+
+                }
+
             }
         }
 
