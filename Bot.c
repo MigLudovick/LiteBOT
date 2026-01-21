@@ -150,25 +150,22 @@ void MoveBot_AI(struct GameData* data)
         enum Direction chosenDir;
         enum MovementType chosenType = MOVE_TO;
 
-        // --- PRIORITÉ : TESTER LES MARCHES (Distance 1) ---
-        // Nord
+        // --- PHASE 1 : RECHERCHE DE MOUVEMENT ---
+        // (On teste Nord, Est, Sud, Ouest comme avant...)
         if (y > 0 && !moveFound && !visited[y - 1][x] && (data->grid->cell[y - 1][x]->type == WALKABLE || data->grid->cell[y - 1][x]->type == END)) {
             chosenDir = NORTH; chosenType = MOVE_TO; moveFound = true;
         }
-        // Est
         else if (x + 1 < GRID_COLS && !moveFound && !visited[y][x + 1] && (data->grid->cell[y][x + 1]->type == WALKABLE || data->grid->cell[y][x + 1]->type == END)) {
             chosenDir = EAST; chosenType = MOVE_TO; moveFound = true;
         }
-        // Sud
         else if (y + 1 < GRID_ROWS && !moveFound && !visited[y + 1][x] && (data->grid->cell[y + 1][x]->type == WALKABLE || data->grid->cell[y + 1][x]->type == END)) {
             chosenDir = SOUTH; chosenType = MOVE_TO; moveFound = true;
         }
-        // Ouest
         else if (x > 0 && !moveFound && !visited[y][x - 1] && (data->grid->cell[y][x - 1]->type == WALKABLE || data->grid->cell[y][x - 1]->type == END)) {
             chosenDir = WEST; chosenType = MOVE_TO; moveFound = true;
         }
 
-        // --- SECONDAIRE : TESTER LES SAUTS (Distance 2) si pas de marche possible ---
+        // --- TEST DES SAUTS ---
         if (!moveFound) {
             if (y > 1 && !visited[y - 2][x] && data->grid->cell[y - 1][x]->type == OBSTACLE && (data->grid->cell[y - 2][x]->type == WALKABLE || data->grid->cell[y - 2][x]->type == END)) {
                 chosenDir = NORTH; chosenType = JUMP; moveFound = true;
@@ -184,24 +181,21 @@ void MoveBot_AI(struct GameData* data)
             }
         }
 
+        // --- PHASE 2 : EXÉCUTION VISUELLE ---
         if (moveFound) {
-            // Appliquer le mouvement
+            // Mouvement classique vers l'avant
             AddMovement(data->bot, chosenType, chosenDir);
             data->pathResult = MoveBot(data->bot, data->grid, chosenType, chosenDir);
 
-            // Marquer la destination comme visitée
             visited[data->bot->position.y][data->bot->position.x] = true;
             historyIndex++;
             history[historyIndex] = data->bot->position;
-
-            sfSleep(sfMilliseconds(300));
         }
         else if (historyIndex > 0) {
-            // RETOUR EN ARRIÈRE (Backtracking)
+            // BACKTRACKING : On prépare le mouvement de retour
             historyIndex--;
             sfVector2i target = history[historyIndex];
 
-            // Calcul de la distance pour savoir s'il faut sauter pour revenir
             int distY = abs(target.y - data->bot->position.y);
             int distX = abs(target.x - data->bot->position.x);
             enum MovementType backType = (distY == 2 || distX == 2) ? JUMP : MOVE_TO;
@@ -212,16 +206,26 @@ void MoveBot_AI(struct GameData* data)
             else if (target.x < data->bot->position.x) backDir = WEST;
             else backDir = EAST;
 
+            // EXÉCUTION DU RETOUR : On utilise MoveBot pour mettre à jour le sprite
+            printf("Backtracking vers [%d, %d]\n", target.x, target.y);
             AddMovement(data->bot, backType, backDir);
             data->pathResult = MoveBot(data->bot, data->grid, backType, backDir);
         }
+        else {
+            break;
+        }
+
+        // --- L'ÉTAPE CRUCIALE POUR ÉVITER LA TÉLÉPORTATION ---
+        // 1. On attend un peu pour que l'oeil humain voit le mouvement
+        sfSleep(sfMilliseconds(400));
+
+        
     }
 }
 
 
-
-    bool SearchPath_AI(struct Bot* bot, Grid * grid)
-    {
+bool SearchPath_AI(struct Bot* bot, Grid* grid)
+{
     // Implement pathfinding algorithm to fill bot's MoveQueue
     return false;
 }
